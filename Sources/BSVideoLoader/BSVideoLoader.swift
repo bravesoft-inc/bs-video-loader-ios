@@ -22,6 +22,10 @@ public class BSVideoLoader: NSObject {
 
     private var activeDownloadsMap: [AVAggregateAssetDownloadTask: AVURLAsset] = [:]
     private var timerCancellable: AnyCancellable?
+    
+    public override init() {
+        super.init()
+    }
 
     public func exportVideo(_ asset: AVURLAsset, outputURL: URL, fileType: AVFileType = .mp4, presetName: String = AVAssetExportPresetHighestQuality) async throws -> Bool {
         try await withCheckedThrowingContinuation { continuation in
