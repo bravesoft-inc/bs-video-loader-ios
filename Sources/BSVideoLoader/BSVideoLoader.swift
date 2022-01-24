@@ -19,6 +19,8 @@ public class BSVideoLoader: NSObject {
     private var configuration: URLSessionConfiguration {
         .background(withIdentifier: String(describing: Self.self))
     }
+    
+    private let fileManager = FileManager.default
 
     private var activeDownloadsMap: [AVAggregateAssetDownloadTask: AVURLAsset] = [:]
     private var timerCancellable: AnyCancellable?
@@ -75,10 +77,12 @@ public class BSVideoLoader: NSObject {
                     }
                 }
             
-            do {
-                try FileManager.default.removeItem(at: outputURL)
-            } catch {
-                return continuation.resume(throwing: BSVideoLoaderError.failedRemoveFile)
+            if fileManager.fileExists(atPath: outputURL.path) {
+                do {
+                    try fileManager.removeItem(at: outputURL)
+                } catch {
+                    return continuation.resume(throwing: BSVideoLoaderError.failedRemoveFile)
+                }
             }
 
             exportSession.outputURL = outputURL
