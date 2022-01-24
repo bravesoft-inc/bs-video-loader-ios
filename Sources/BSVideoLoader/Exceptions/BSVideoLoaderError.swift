@@ -12,6 +12,7 @@ public enum BSVideoLoaderError: Error {
     case failedToCreateVideoTrack(msg: String)
     case failedToCreateAudioTrack(msg: String)
     case failedToCreateExportSession
+    case failedRemoveFile
     case exportError
     case exportCancel
     case exportUnknownError

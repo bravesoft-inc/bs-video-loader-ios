@@ -74,6 +74,12 @@ public class BSVideoLoader: NSObject {
                         self.percentPublihser.send(progress)
                     }
                 }
+            
+            do {
+                try FileManager.default.removeItem(at: outputURL)
+            } catch {
+                return continuation.resume(throwing: BSVideoLoaderError.failedRemoveFile)
+            }
 
             exportSession.outputURL = outputURL
             exportSession.outputFileType = fileType
