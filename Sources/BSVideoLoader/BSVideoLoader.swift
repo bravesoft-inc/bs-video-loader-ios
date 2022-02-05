@@ -70,6 +70,7 @@ public class BSVideoLoader: NSObject {
                     guard let self = self, let exportSession = self.exportSession else { return }
 
                     if exportSession.progress == 1 {
+                        self.exportSession = nil
                         self.timerCancellable?.cancel()
                         self.percentPublihser.send(completion: .finished)
                     } else {
@@ -97,22 +98,26 @@ public class BSVideoLoader: NSObject {
                     guard let error = self.exportSession?.error else {
                         return continuation.resume(throwing: BSVideoLoaderError.exportError)
                     }
-
+                    
+                    self.exportSession = nil
                     self.timerCancellable?.cancel()
                     return continuation.resume(throwing: error)
 
                 case .cancelled:
 
+                    self.exportSession = nil
                     self.timerCancellable?.cancel()
                     return continuation.resume(throwing: BSVideoLoaderError.exportCancel)
 
                 case .completed:
 
+                    self.exportSession = nil
                     self.timerCancellable?.cancel()
                     return continuation.resume(returning: true)
 
                 default:
 
+                    self.exportSession = nil
                     self.timerCancellable?.cancel()
                     return continuation.resume(throwing: BSVideoLoaderError.exportUnknownError)
                 }
