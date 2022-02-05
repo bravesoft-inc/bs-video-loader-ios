@@ -19,6 +19,8 @@ public class BSVideoLoader: NSObject {
     }
     
     private let fileManager = FileManager.default
+    
+    private var exportSession: AVAssetExportSession?
 
     private var activeDownloadsMap: [AVAggregateAssetDownloadTask: AVURLAsset] = [:]
     private var timerCancellable: AnyCancellable?
@@ -56,15 +58,16 @@ public class BSVideoLoader: NSObject {
                     return continuation.resume(throwing: BSVideoLoaderError.failedToCreateAudioTrack(msg: error.localizedDescription))
                 }
             }
-
-            guard let exportSession = AVAssetExportSession(asset: composition, presetName: presetName) else {
+            
+            self.exportSession = AVAssetExportSession(asset: composition, presetName: presetName)
+            guard exportSession != nil else {
                 return continuation.resume(throwing: BSVideoLoaderError.failedToCreateExportSession)
             }
-
+            
             timerCancellable = Timer.publish(every: 0.1, on: .main, in: .common)
                 .autoconnect()
                 .sink { [weak self] _ in
-                    guard let self = self else { return }
+                    guard let self = self, let exportSession = self.exportSession else { return }
 
                     if exportSession.progress == 1 {
                         self.timerCancellable?.cancel()
@@ -83,15 +86,15 @@ public class BSVideoLoader: NSObject {
                 }
             }
 
-            exportSession.outputURL = outputURL
-            exportSession.outputFileType = fileType
-            exportSession.exportAsynchronously {
-                switch exportSession.status {
+            exportSession?.outputURL = outputURL
+            exportSession?.outputFileType = fileType
+            exportSession?.exportAsynchronously {
+                switch self.exportSession?.status {
                 case .waiting, .exporting:
                     break
 
                 case .failed:
-                    guard let error = exportSession.error else {
+                    guard let error = self.exportSession?.error else {
                         return continuation.resume(throwing: BSVideoLoaderError.exportError)
                     }
 
@@ -114,7 +117,13 @@ public class BSVideoLoader: NSObject {
                     return continuation.resume(throwing: BSVideoLoaderError.exportUnknownError)
                 }
             }
+            
+            
         }
+    }
+    
+    public func cancelDownload() {
+        exportSession?.cancelExport()
     }
 
     public func downloadStream(urlAsset: AVURLAsset, name: String) {
