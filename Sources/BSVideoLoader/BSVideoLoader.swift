@@ -28,6 +28,97 @@ public class BSVideoLoader: NSObject {
     public override init() {
         super.init()
     }
+    
+    public func exportVideo(_ asset: AVAsset, outputURL: URL, fileType: AVFileType = .mp4, presetName: String = AVAssetExportPresetHighestQuality) async throws -> Bool {
+        try await withCheckedThrowingContinuation { continuation in
+            guard asset.isExportable else {
+                return continuation.resume(throwing: BSVideoLoaderError.isNotExportable)
+            }
+
+            let composition = AVMutableComposition()
+
+            if
+                let compositionVideoTrack = composition.addMutableTrack(withMediaType: .video, preferredTrackID: CMPersistentTrackID(kCMPersistentTrackID_Invalid)),
+                let sourceVideoTrack = asset.tracks(withMediaType: .video).first
+            {
+                do {
+                    try compositionVideoTrack.insertTimeRange(CMTimeRangeMake(start: .zero, duration: asset.duration), of: sourceVideoTrack, at: .zero)
+                } catch {
+                    return continuation.resume(throwing: BSVideoLoaderError.failedToCreateVideoTrack(msg: error.localizedDescription))
+                }
+            }
+
+            if
+                let compositionAudioTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: CMPersistentTrackID(kCMPersistentTrackID_Invalid)),
+                let sourceAudioTrack = asset.tracks(withMediaType: .audio).first
+            {
+                do {
+                    try compositionAudioTrack.insertTimeRange(CMTimeRangeMake(start: .zero, duration: asset.duration), of: sourceAudioTrack, at: .zero)
+                } catch {
+                    return continuation.resume(throwing: BSVideoLoaderError.failedToCreateAudioTrack(msg: error.localizedDescription))
+                }
+            }
+            
+            self.exportSession = AVAssetExportSession(asset: composition, presetName: presetName)
+            guard exportSession != nil else {
+                return continuation.resume(throwing: BSVideoLoaderError.failedToCreateExportSession)
+            }
+            
+            timerCancellable = Timer.publish(every: 0.1, on: .main, in: .common)
+                .autoconnect()
+                .sink { [weak self] _ in
+                    guard let self = self, let exportSession = self.exportSession else { return }
+
+                    if exportSession.progress == 1 {
+                        self.timerCancellable?.cancel()
+                        self.percentPublihser.send(completion: .finished)
+                    } else {
+                        let progress = Double(exportSession.progress)
+                        self.percentPublihser.send(progress)
+                    }
+                }
+            
+            if fileManager.fileExists(atPath: outputURL.path) {
+                do {
+                    try fileManager.removeItem(at: outputURL)
+                } catch {
+                    return continuation.resume(throwing: BSVideoLoaderError.failedRemoveFile)
+                }
+            }
+
+            exportSession?.outputURL = outputURL
+            exportSession?.outputFileType = fileType
+            exportSession?.exportAsynchronously {
+                switch self.exportSession?.status {
+                case .waiting, .exporting:
+                    break
+
+                case .failed:
+                    guard let error = self.exportSession?.error else {
+                        return continuation.resume(throwing: BSVideoLoaderError.exportError)
+                    }
+                    
+                    self.timerCancellable?.cancel()
+                    return continuation.resume(throwing: error)
+
+                case .cancelled:
+
+                    self.timerCancellable?.cancel()
+                    return continuation.resume(throwing: BSVideoLoaderError.exportCancel)
+
+                case .completed:
+
+                    self.timerCancellable?.cancel()
+                    return continuation.resume(returning: true)
+
+                default:
+
+                    self.timerCancellable?.cancel()
+                    return continuation.resume(throwing: BSVideoLoaderError.exportUnknownError)
+                }
+            }
+        }
+    }
 
     public func exportVideo(_ asset: AVURLAsset, outputURL: URL, fileType: AVFileType = .mp4, presetName: String = AVAssetExportPresetHighestQuality) async throws -> Bool {
         try await withCheckedThrowingContinuation { continuation in
@@ -117,8 +208,6 @@ public class BSVideoLoader: NSObject {
                     return continuation.resume(throwing: BSVideoLoaderError.exportUnknownError)
                 }
             }
-            
-            
         }
     }
     
