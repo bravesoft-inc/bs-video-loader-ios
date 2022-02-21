@@ -25,10 +25,60 @@ public class BSVideoLoader: NSObject {
     private var activeDownloadsMap: [AVAggregateAssetDownloadTask: AVURLAsset] = [:]
     private var timerCancellable: AnyCancellable?
     
+    private var downloadTask: URLSessionDataTask?
+    private var observation: NSKeyValueObservation?
+    
     public override init() {
         super.init()
     }
     
+    // 外部からダウンロードする時に利用する
+    public func downloadVideo(url: URL, outputURL: URL, headers: [String: String]? = nil) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) -> Void in
+            var request = URLRequest(url: url)
+            request.allHTTPHeaderFields = headers
+            
+            downloadTask = URLSession.shared.dataTask(with: request) { (data, response, error) in
+                if let error = error {
+                    return continuation.resume(throwing: BSVideoLoaderError.downlaodFailed(msg: error.localizedDescription))
+                }
+                
+                guard let data = data, !data.isEmpty else {
+                    return continuation.resume(throwing: BSVideoLoaderError.downlaodFailed(msg: "Data is empty."))
+                }
+                
+                do {
+                    try data.write(to: outputURL)
+
+                    return continuation.resume()
+                } catch {
+                    if let error = error as NSError?, error.code == NSURLErrorCancelled {
+                        return continuation.resume(throwing: BSVideoLoaderError.downloadCancel)
+                    }
+                    return continuation.resume(throwing: BSVideoLoaderError.downlaodFailed(msg: error.localizedDescription))
+                }
+            }
+            
+            observation = downloadTask?.progress.observe(\.fractionCompleted, changeHandler: { [weak self] progress, _ in
+                guard let self = self else { return }
+                
+                if progress.isFinished {
+                    self.observation = nil
+                    self.percentPublihser.send(completion: .finished)
+                } else {
+                    self.percentPublihser.send(progress.fractionCompleted)
+                }
+            })
+            
+            downloadTask?.resume()
+        }
+    }
+    
+    public func downloadCancel() {
+        downloadTask?.cancel()
+    }
+    
+    // AVAssetをローカルに保存する時に利用(リモートファイルをダウンロードするのは非推奨 => downloadVideoを使用すること)
     public func exportVideo(_ asset: AVAsset, outputURL: URL, fileType: AVFileType = .mp4, presetName: String = AVAssetExportPresetHighestQuality) async throws -> Bool {
         try await withCheckedThrowingContinuation { continuation in
             guard asset.isExportable else {
@@ -120,6 +170,7 @@ public class BSVideoLoader: NSObject {
         }
     }
 
+    // AVURLAssetをローカルに保存する時に利用(リモートファイルをダウンロードするのは非推奨 => downloadVideoを使用すること)
     public func exportVideo(_ asset: AVURLAsset, outputURL: URL, fileType: AVFileType = .mp4, presetName: String = AVAssetExportPresetHighestQuality) async throws -> Bool {
         try await withCheckedThrowingContinuation { continuation in
             guard asset.isExportable else {
@@ -179,6 +230,7 @@ public class BSVideoLoader: NSObject {
 
             exportSession?.outputURL = outputURL
             exportSession?.outputFileType = fileType
+            exportSession?.metadata = []
             exportSession?.exportAsynchronously {
                 switch self.exportSession?.status {
                 case .waiting, .exporting:
@@ -211,7 +263,7 @@ public class BSVideoLoader: NSObject {
         }
     }
     
-    public func cancelDownload() {
+    public func exportCancel() {
         exportSession?.cancelExport()
     }
 
