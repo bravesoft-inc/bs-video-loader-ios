@@ -40,6 +40,10 @@ public class BSVideoLoader: NSObject {
             
             downloadTask = URLSession.shared.dataTask(with: request) { (data, response, error) in
                 if let error = error {
+                    if let nsError = error as NSError?, nsError.code == NSURLErrorCancelled {
+                        return continuation.resume(throwing: BSVideoLoaderError.downloadCancel)
+                    }
+                    
                     return continuation.resume(throwing: BSVideoLoaderError.downlaodFailed(msg: error.localizedDescription))
                 }
                 
@@ -51,11 +55,7 @@ public class BSVideoLoader: NSObject {
                     try data.write(to: outputURL)
 
                     return continuation.resume()
-                } catch {
-                    if error.localizedDescription == "cancelled" {
-                        return continuation.resume(throwing: BSVideoLoaderError.downloadCancel)
-                    }
-
+                } catch {                    
                     return continuation.resume(throwing: BSVideoLoaderError.downlaodFailed(msg: error.localizedDescription))
                 }
             }
