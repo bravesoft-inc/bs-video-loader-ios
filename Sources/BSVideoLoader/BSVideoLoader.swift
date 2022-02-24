@@ -52,15 +52,9 @@ public class BSVideoLoader: NSObject {
 
                     return continuation.resume()
                 } catch {
-                    if let error = error as NSError? {
-                        print("bvl:\(error.code)", "bvl:\(NSURLErrorCancelled)")
-                        if error.code == NSURLErrorCancelled {
-                            return continuation.resume(throwing: BSVideoLoaderError.downloadCancel)
-                        }
-                    
-                        return continuation.resume(throwing: BSVideoLoaderError.downlaodFailed(msg: error.localizedDescription))
+                    if let error = error as NSError?, error.code == NSURLErrorCancelled {
+                        return continuation.resume(throwing: BSVideoLoaderError.downloadCancel)
                     }
-                    print("bvl:\(error)")
                     return continuation.resume(throwing: BSVideoLoaderError.downlaodFailed(msg: error.localizedDescription))
                 }
             }
