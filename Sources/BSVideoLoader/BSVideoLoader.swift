@@ -44,7 +44,7 @@ public class BSVideoLoader: NSObject {
                         if nsError.code == NSURLErrorCancelled {
                             return continuation.resume(throwing: BSVideoLoaderError.downloadCancel)
                         } else if nsError.code == NSURLErrorNotConnectedToInternet || nsError.code == NSURLErrorDataNotAllowed {
-                            return continuation.resume(throwing: BSVideoLoaderError.collectionLost)
+                            return continuation.resume(throwing: BSVideoLoaderError.connectionLost)
                         }
                     }
                     
