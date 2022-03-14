@@ -40,8 +40,12 @@ public class BSVideoLoader: NSObject {
             
             downloadTask = URLSession.shared.dataTask(with: request) { (data, response, error) in
                 if let error = error {
-                    if let nsError = error as NSError?, nsError.code == NSURLErrorCancelled {
-                        return continuation.resume(throwing: BSVideoLoaderError.downloadCancel)
+                    if let nsError = error as NSError? {
+                        if nsError.code == NSURLErrorCancelled {
+                            return continuation.resume(throwing: BSVideoLoaderError.downloadCancel)
+                        } else if nsError.code == NSURLErrorNotConnectedToInternet || nsError.code == NSURLErrorDataNotAllowed {
+                            return continuation.resume(throwing: BSVideoLoaderError.collectionLost)
+                        }
                     }
                     
                     return continuation.resume(throwing: BSVideoLoaderError.downlaodFailed(msg: error.localizedDescription))

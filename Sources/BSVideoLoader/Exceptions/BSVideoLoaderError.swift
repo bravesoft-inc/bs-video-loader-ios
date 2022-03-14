@@ -18,4 +18,5 @@ public enum BSVideoLoaderError: Error {
     case exportError
     case exportCancel
     case exportUnknownError
+    case collectionLost
 }
