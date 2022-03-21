@@ -13,7 +13,7 @@ public enum BSVideoLoaderError: Error {
     case failedToCreateAudioTrack(msg: String)
     case failedToCreateExportSession
     case failedRemoveFile
-    case downlaodFailed(error: Error? = nil)
+    case downlaodFailed(msg: String)
     case downloadCancel
     case exportError
     case exportCancel
