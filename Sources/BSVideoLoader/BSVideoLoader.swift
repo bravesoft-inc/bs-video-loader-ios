@@ -48,11 +48,11 @@ public class BSVideoLoader: NSObject {
                         }
                     }
                     
-                    return continuation.resume(throwing: BSVideoLoaderError.downlaodFailed(msg: error.localizedDescription))
+                    return continuation.resume(throwing: BSVideoLoaderError.downlaodFailed(error: error))
                 }
                 
                 guard let data = data, !data.isEmpty else {
-                    return continuation.resume(throwing: BSVideoLoaderError.downlaodFailed(msg: "Data is empty."))
+                    return continuation.resume(throwing: BSVideoLoaderError.downlaodFailed())
                 }
                 
                 do {
@@ -60,7 +60,7 @@ public class BSVideoLoader: NSObject {
 
                     return continuation.resume()
                 } catch {                    
-                    return continuation.resume(throwing: BSVideoLoaderError.downlaodFailed(msg: error.localizedDescription))
+                    return continuation.resume(throwing: BSVideoLoaderError.downlaodFailed(error: error))
                 }
             }
             
