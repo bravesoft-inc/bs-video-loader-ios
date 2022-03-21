@@ -96,6 +96,8 @@ public class BSVideoLoader: NSObject {
                 let compositionVideoTrack = composition.addMutableTrack(withMediaType: .video, preferredTrackID: CMPersistentTrackID(kCMPersistentTrackID_Invalid)),
                 let sourceVideoTrack = asset.tracks(withMediaType: .video).first
             {
+                compositionVideoTrack.preferredTransform = sourceVideoTrack.preferredTransform
+                
                 do {
                     try compositionVideoTrack.insertTimeRange(CMTimeRangeMake(start: .zero, duration: asset.duration), of: sourceVideoTrack, at: .zero)
                 } catch {
